@@ -3,11 +3,22 @@ from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from os import getenv
 from data import channels, user_load, user_save
+from gpt import send_request
 import random
 
 load_dotenv()
 token = getenv('TOKEN')
 bot = telebot.TeleBot(token=token)
+
+
+@bot.message_handler(commands=['help'])
+def help(message: Message):
+    bot.send_message(message.chat.id, '*список команд*')
+
+
+@bot.message_handler(commands=['continue'])
+def continue_session(message):
+    first_user_request(message.chat.id)
 
 
 def gen_channels_markup(user_id):
@@ -40,18 +51,23 @@ def gen_channels_markup(user_id):
 def start(message: Message):
     user_id = str(message.chat.id)
     users = user_load()
+    if user_id not in users:
+        users[user_id] = {
+            "channels": {},
+            "requests": []
+        }
+        user_save(users)
 
-    users[user_id] = {
-        "channels": {},
-        "requests": []
-    }
-    user_save(users)
-
-    bot.send_message(message.chat.id,
-                     'Это телеграмм бот, предоставляющий уникальнейшую возможность пообщаться с Глебглобом')
-    msg = bot.send_message(message.chat.id, 'Чтобы начать, вам нужно подписаться на эти каналы:',
-                           reply_markup=gen_channels_markup(user_id))
-    bot.register_next_step_handler(msg, access_denied)
+        bot.send_message(message.chat.id,
+                         'Это телеграмм бот, предоставляющий уникальнейшую возможность пообщаться с Глебглобом')
+        msg = bot.send_message(message.chat.id, 'Чтобы начать, вам нужно подписаться на эти каналы:',
+                               reply_markup=gen_channels_markup(user_id))
+        bot.register_next_step_handler(msg, access_denied)
+    elif status_check(message):
+        bot.send_message(message.chat.id, 'вы уже прошли проверку')
+        first_user_request(message.chat.id)
+    else:
+        bot.send_message(message.chat.id, 'вы все еще не подписаны')
 
 
 def access_denied(message):
@@ -87,7 +103,7 @@ def check(call):
 
 
 def first_user_request(chat_id):
-    msg = bot.send_message(chat_id, 'напишите свой запрос')
+    msg = bot.send_message(chat_id, 'напишите свой запрос:')
     bot.register_next_step_handler(msg, register_user_request)
 
 
@@ -97,16 +113,8 @@ def status_check(message):
     for channel in users[user_id]['channels']:
         if not users[user_id]['channels'][channel]['is_member']:
             bot.send_message(message.chat.id, 'вы подписаны не на все каналы')
-            break
-
-
-@bot.message_handler(content_types=['text'], func=status_check)
-def register_user_request(message: Message):
-    bot.send_message(message.chat.id, f'ваш запрос: {message.text}')
-    ...
-
-
-...
+            return False
+    return True
 
 
 @bot.message_handler(content_types=['text'])
@@ -117,6 +125,27 @@ def echo(message: Message) -> None:
     'Вы напечатали: *сообщение пользователя*.что?'
     :param message: некорректное сообщение пользователя"""
     bot.send_message(chat_id=message.chat.id, text=f'Вы напечатали: {message.text}. Что?')
+
+
+@bot.message_handler(content_types=['text'], func=status_check)
+def register_user_request(message: Message):
+    if not message.text.startswith('/'):
+
+        users = user_load()
+        user_id = str(message.chat.id)
+        users[user_id]['requests'].append(message.text)
+        user_save(users)
+
+        bot.send_message(message.chat.id, send_request(message.text))
+        first_user_request(message.chat.id)
+
+    elif message.text == '/stop':
+        bot.send_message(message.chat.id, 'сессия приостановлена, чтобы ее продолжить, напишите /continue')
+
+    else:
+        bot.send_message(message.chat.id,
+                         'чтобы использовать команды, вы должны приостановить этот высокоинтеллектуальный диалог, /stop?')
+        first_user_request(message.chat.id)
 
 
 bot.infinity_polling()
