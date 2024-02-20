@@ -17,7 +17,8 @@ def gen_channels_markup(user_id):
         button = InlineKeyboardButton(text=text, url='https://t.me/' + url)
         markup.add(button)
 
-    chosen_channels = random.choices(channels, k=3)
+    chosen_channels = random.sample(channels, k=3)
+
     users = user_load()
 
     for channel in chosen_channels:
@@ -60,6 +61,7 @@ def access_denied(message):
         if not users[user_id]['channels'][channel]['is_member']:
             msg = bot.send_message(message.chat.id, 'прежде чем что-то сделать, вы должны пройти проверку')
             bot.register_next_step_handler(msg, access_denied)
+            break
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'check')
