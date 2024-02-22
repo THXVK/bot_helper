@@ -13,7 +13,12 @@ bot = telebot.TeleBot(token=token)
 
 @bot.message_handler(commands=['help'])
 def help(message: Message):
-    bot.send_message(message.chat.id, '*список команд*')
+    bot.send_message(message.chat.id, """
+/start - команда для запуска бота
+/help - список команд
+/stop - остановка диалога
+/continue - продолжение диалога
+    """)
 
 
 @bot.message_handler(commands=['continue'])
