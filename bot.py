@@ -3,7 +3,7 @@ from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from os import getenv
 from data import channels, user_load, user_save
-from gpt import send_request
+from gpt import gpt_dialog
 import random
 
 load_dotenv()
@@ -19,6 +19,13 @@ def help(message: Message):
 @bot.message_handler(commands=['continue'])
 def continue_session(message):
     first_user_request(message.chat.id)
+
+
+@bot.message_handler(commands=['debug'])
+def debug(message):
+    with open('logConfig.log', 'rb') as file:
+        f = file.read()
+    bot.send_document(message.chat.id, f, visible_file_name='logConfig.log')
 
 
 def gen_channels_markup(user_id):
@@ -86,14 +93,14 @@ def check(call):
     users = user_load()
     status = ['creator', 'administrator', 'member']
     for u_channel in users[user_id]['channels']:
-        for i in status:
-            if i == bot.get_chat_member(chat_id='@' + users[user_id]['channels'][u_channel]['url'],
-                                        user_id=call.message.from_user.id).status:
-                users[user_id]['channels'][u_channel]['is_member'] = True
-                break
+
+        if bot.get_chat_member(chat_id='@' + users[user_id]['channels'][u_channel]['url'],
+                               user_id=call.message.chat.id).status in status:
+            users[user_id]['channels'][u_channel]['is_member'] = True
+
         else:
             user_save(users)
-            bot.send_message(call.message.chat.id, f'вы еще не подписались на {u_channel["name"]}')
+            bot.send_message(call.message.chat.id, f'вы еще не подписались на {u_channel}')
             break
     else:
         user_save(users)
@@ -133,10 +140,11 @@ def register_user_request(message: Message):
 
         users = user_load()
         user_id = str(message.chat.id)
+        user_request = message.text
         users[user_id]['requests'].append(message.text)
         user_save(users)
 
-        bot.send_message(message.chat.id, send_request(message.text))
+        bot.send_message(message.chat.id, gpt_dialog(user_request))
         first_user_request(message.chat.id)
 
     elif message.text == '/stop':
