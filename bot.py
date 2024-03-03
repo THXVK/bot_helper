@@ -2,7 +2,7 @@ import telebot
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from os import getenv
-from data import channels, user_load, user_save
+from data import channels, user_load, user_save, settings_1, settings_2
 from gpt import gpt_dialog
 import random
 
@@ -28,9 +28,22 @@ def continue_session(message):
 
 @bot.message_handler(commands=['debug'])
 def debug(message):
-    with open('logConfig.log', 'rb') as file:
+    with open('other/logConfig.log', 'rb') as file:
         f = file.read()
-    bot.send_document(message.chat.id, f, visible_file_name='logConfig.log')
+    bot.send_document(message.chat.id, f, visible_file_name='other/logConfig.log')
+
+
+def gen_settings_markup(settings):
+    markup = InlineKeyboardMarkup()
+
+    def gen_button(text, callback):
+        button = InlineKeyboardButton(text=text, callback_data=callback + '_set')
+        markup.add(button)
+
+    for params in settings:
+        ...
+
+    return markup
 
 
 def gen_channels_markup(user_id):
@@ -111,7 +124,27 @@ def check(call):
         user_save(users)
         bot.send_message(call.message.chat.id, 'вы прошли проверку')
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-        first_user_request(call.message.chat.id)
+        settings_choice_1(call.message.chat.id)
+
+
+def settings_choice_1(chat_id):
+    msg = bot.send_message(chat_id, 'выберите тему', reply_markup=gen_settings_markup(settings_1))
+
+    ...
+    bot.register_next_step_handler(msg, settings_choice_2)
+
+
+def settings_choice_2(chat_id):
+    msg = bot.send_message(chat_id, 'выберите сложность', reply_markup=gen_settings_markup(settings_2))
+
+    ...
+
+    bot.register_next_step_handler(msg, first_user_request)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.endsswith('set'))
+def settings_change():
+    ...
 
 
 def first_user_request(chat_id):

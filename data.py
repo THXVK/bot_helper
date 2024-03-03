@@ -7,6 +7,17 @@ channels = [
     {'канал 4': 'sertsdfgWS'},
 ]
 
+settings_1 = {
+    'Русский': 'Russian',
+    'Математика': 'Math'
+
+}
+
+settings_2 = {
+
+    ...
+}
+
 filename_1 = '../bot_helper/users_data.json'
 
 
