@@ -131,23 +131,47 @@ def check(call):
 
 
 def settings_choice_1(chat_id):
-    msg = bot.send_message(chat_id, 'выберите тему:', reply_markup=gen_settings_markup('subject'))
-    bot.register_next_step_handler(msg, settings_choice_2)
+    bot.send_message(chat_id, 'выберите тему:', reply_markup=gen_settings_markup('subject'))
 
 
 def settings_choice_2(chat_id):
-    msg = bot.send_message(chat_id, 'выберите сложность:', reply_markup=gen_settings_markup('difficulty'))
+    bot.send_message(chat_id, 'выберите сложность:', reply_markup=gen_settings_markup('difficulty'))
 
 
 @bot.callback_query_handler(func=lambda call: call.data.endswith('set'))
 def settings_change(call):
-    user_id = str(call.message.chat.id)
+    chat_id = call.message.chat.id
+    user_id = str(chat_id)
     users = user_load()
     param = call.data.split('_')[0]
     set = call.data.split('_')[1]
+
     users[user_id]['settings'][set] = param
     user_save(users)
-    bot.send_message(call.message.chat.id, 'настройки изменены')
+    bot.send_message(chat_id, 'настройки изменены')
+    actions_1(chat_id)
+
+
+def actions_1(chat_id):
+    user_id = str(chat_id)
+    users = user_load()
+    if not users[user_id]['settings']['difficulty']:
+        settings_choice_2(chat_id)
+    elif not users[user_id]['settings']['subject']:
+        settings_choice_1(chat_id)
+    else:
+        actions_markup = InlineKeyboardMarkup()
+        button_1 = InlineKeyboardButton(text='сменить тему', callback_data='action')
+        button_2 = InlineKeyboardButton(text='сменить сложность', callback_data='action')
+        button_3 = InlineKeyboardButton(text='задать вопрос', callback_data='action')
+        actions_markup.add(button_1, button_2, button_3, row_width=2)
+
+        bot.send_message(chat_id, 'что вы хотите сделать?', reply_markup=actions_markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.endswith('action'))
+def actions_2(call):
+    ...
 
 
 def first_user_request(chat_id):
@@ -182,6 +206,9 @@ def register_user_request(message: Message):
         users = user_load()
         user_id = str(message.chat.id)
         user_request = message.text
+
+        ...
+
         users[user_id]['requests'].append(message.text)
         user_save(users)
 
