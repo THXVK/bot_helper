@@ -2,7 +2,7 @@ import telebot
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from os import getenv
-from data import channels, user_load, user_save, settings_1, settings_2
+from data import channels, user_load, user_save, settings_dict
 from gpt import gpt_dialog
 import random
 
@@ -37,11 +37,11 @@ def gen_settings_markup(settings):
     markup = InlineKeyboardMarkup()
 
     def gen_button(text, callback):
-        button = InlineKeyboardButton(text=text, callback_data=callback + '_set')
+        button = InlineKeyboardButton(text=text, callback_data=callback + '_' + settings + '_set')
         markup.add(button)
 
-    for params in settings:
-        ...
+    for param in settings_dict[settings]:
+        gen_button(param, param)
 
     return markup
 
@@ -79,7 +79,10 @@ def start(message: Message):
     if user_id not in users:
         users[user_id] = {
             "channels": {},
-            "requests": []
+            "requests": [],
+            "settings": {"difficulty": "",
+                         "subject": ""
+                         }
         }
         user_save(users)
 
@@ -128,23 +131,23 @@ def check(call):
 
 
 def settings_choice_1(chat_id):
-    msg = bot.send_message(chat_id, 'выберите тему', reply_markup=gen_settings_markup(settings_1))
-
-    ...
+    msg = bot.send_message(chat_id, 'выберите тему:', reply_markup=gen_settings_markup('subject'))
     bot.register_next_step_handler(msg, settings_choice_2)
 
 
 def settings_choice_2(chat_id):
-    msg = bot.send_message(chat_id, 'выберите сложность', reply_markup=gen_settings_markup(settings_2))
-
-    ...
-
-    bot.register_next_step_handler(msg, first_user_request)
+    msg = bot.send_message(chat_id, 'выберите сложность:', reply_markup=gen_settings_markup('difficulty'))
 
 
-@bot.callback_query_handler(func=lambda call: call.data.endsswith('set'))
-def settings_change():
-    ...
+@bot.callback_query_handler(func=lambda call: call.data.endswith('set'))
+def settings_change(call):
+    user_id = str(call.message.chat.id)
+    users = user_load()
+    param = call.data.split('_')[0]
+    set = call.data.split('_')[1]
+    users[user_id]['settings'][set] = param
+    user_save(users)
+    bot.send_message(call.message.chat.id, 'настройки изменены')
 
 
 def first_user_request(chat_id):

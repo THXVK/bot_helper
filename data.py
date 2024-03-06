@@ -6,18 +6,17 @@ channels = [
     {'канал 3': 'sdfsadfsdeq'},
     {'канал 4': 'sertsdfgWS'},
 ]
-
-settings_1 = {
-    'Русский': 'Russian',
-    'Математика': 'Math'
-
+settings_dict = {
+    'subject': [
+        'Русский',
+        'Математика'
+    ],
+    'difficulty': [
+        'новичок',
+        'любитель',
+        'профи'
+    ]
 }
-
-settings_2 = {
-
-    ...
-}
-
 filename_1 = '../bot_helper/users_data.json'
 
 
