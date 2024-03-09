@@ -1,10 +1,10 @@
 import telebot
+import random
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from os import getenv
-from data import channels, user_load, user_save, settings_dict
+from data import user_load, user_save, settings_dict, get_table_data, normal
 from gpt import gpt_dialog
-import random
 
 load_dotenv()
 token = getenv('TOKEN')
@@ -24,7 +24,7 @@ def help(message: Message):
 @bot.message_handler(commands=['settings'])
 def settings(message: Message):
     actions_1(message.chat.id)
-    
+
 
 @bot.message_handler(commands=['continue'])
 def continue_session(message):
@@ -52,6 +52,8 @@ def gen_settings_markup(settings):
 
 
 def gen_channels_markup(user_id):
+    channels_data = get_table_data('channels')
+    channels = normal(channels_data)
     markup = InlineKeyboardMarkup()
 
     def gen_button(text, url):
@@ -64,11 +66,12 @@ def gen_channels_markup(user_id):
 
     for channel in chosen_channels:
         users = user_load()
-        users[user_id]['channels'][list(channel.keys())[0]] = {'name': list(channel.keys())[0],
-                                                               'is_member': False, 'url': list(channel.values())[0]}
+        users[user_id]['channels'][channel['channel_name']] = {'name': channel['channel_name'],
+                                                               'is_member': False, 'url': channel['url']}
         user_save(users)
-        for name, url in channel.items():
-            gen_button(name, url)
+        name = channel['channel_name']
+        url = channel['url']
+        gen_button(name, url)
 
     user_save(users)
 
@@ -92,7 +95,7 @@ def start(message: Message):
         user_save(users)
 
         bot.send_message(message.chat.id,
-                         'Это телеграмм бот, предоставляющий уникальнейшую возможность пообщаться с Глебглобом')
+                         'Это телеграмм бот - помощник')
         msg = bot.send_message(message.chat.id, 'Чтобы начать, вам нужно подписаться на эти каналы:',
                                reply_markup=gen_channels_markup(user_id))
         bot.register_next_step_handler(msg, access_denied)

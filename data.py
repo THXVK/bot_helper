@@ -28,7 +28,7 @@ def user_save(data: dict):
         json.dump(data, file, indent=2, ensure_ascii=False)
 
 
-connection = sqlite3.connect('sqlite3.db')
+connection = sqlite3.connect('sqlite3.db', check_same_thread=False)
 cur = connection.cursor()
 
 channels = {
@@ -44,10 +44,25 @@ cur.execute('''CREATE TABLE IF NOT EXISTS channels (
                        );''')
 
 for channel in channels.items():
-    print(channel[0])
     q = f'SELECT * FROM channels WHERE channel_name = {channel[0]}'
     if not cur.execute(q):
         cur.execute('''INSERT INTO channels (channel_name, url)
                         VALUES (?, ?)''', (channel[0], channel[1]))
 
 connection.commit()
+
+connection.row_factory = sqlite3.Row
+cur = connection.cursor()
+
+
+def get_table_data(table):
+    q = f'SELECT * FROM {table};'
+    table_data = cur.execute(q)
+    return table_data
+
+
+def normal(table_data):
+    result = []
+    for data in table_data:
+        result.append(data)
+    return result
