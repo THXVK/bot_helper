@@ -1,11 +1,10 @@
 import requests
 from log import logger
 from transformers import AutoTokenizer
+from data import user_load
 
 URL = 'http://localhost:1234/v1/chat/completions'
 HEADERS = {"Content-Type": "application/json"}
-
-TEXT = "Тебя зовут Глебглоб. Отвечай на русском, но ты должен заменять в своем ответе корни слов на 'глеб' и 'глоб', не поясняй ответ и не рассказывай пользователю о своих намерениях"
 
 
 class GPT:
@@ -14,7 +13,7 @@ class GPT:
         self.URL = 'http://localhost:1234/v1/chat/completions'
         self.HEADERS = {"Content-Type": "application/json"}
         self.MAX_TOKENS = 50
-        self.assistant_content = "история предыдущих сообщений: "
+        self.assistant_content = "решим задачу по шагам: "
 
     # Подсчитываем количество токенов в промте
     @staticmethod
@@ -51,7 +50,7 @@ class GPT:
 
         # Пустой результат == объяснение закончено
         if not result:
-            return True, 'глеб не глоб'
+            return True, 'объяснение закончено'
         else:
             return True, result
 
@@ -93,10 +92,17 @@ class GPT:
         self.assistant_content = "история предыдущих сообщений: "
 
 
-gpt = GPT(system_content=TEXT)
+def make_system_promt(user_id) -> str:
+    users = user_load()
+    diff = users[user_id]['settings']['difficulty']
+    sub = users[user_id]['settings']['subject']
+    promt = f'ты помощник по предмету {sub}, ты должен ответить на вопрос собеседника, учитывая что его уровень знаний - {diff}. Отвечай на русском'
+    return promt
 
 
-def gpt_dialog(user_request):
+def gpt_dialog(user_request, user_id):
+    text = make_system_promt(user_id)
+    gpt = GPT(system_content=text)
     # Проверка запроса на количество токенов
     request_tokens = gpt.count_tokens(user_request)
     if request_tokens > gpt.MAX_TOKENS:

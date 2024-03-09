@@ -21,6 +21,11 @@ def help(message: Message):
     """)
 
 
+@bot.message_handler(commands=['settings'])
+def settings(message: Message):
+    actions_1(message.chat.id)
+    
+
 @bot.message_handler(commands=['continue'])
 def continue_session(message):
     first_user_request(message.chat.id)
@@ -140,6 +145,7 @@ def settings_choice_2(chat_id):
 
 @bot.callback_query_handler(func=lambda call: call.data.endswith('set'))
 def settings_change(call):
+    bot.delete_message(call.message.chat.id, call.message.message_id)
     chat_id = call.message.chat.id
     user_id = str(chat_id)
     users = user_load()
@@ -161,9 +167,9 @@ def actions_1(chat_id):
         settings_choice_1(chat_id)
     else:
         actions_markup = InlineKeyboardMarkup()
-        button_1 = InlineKeyboardButton(text='сменить тему', callback_data='action')
-        button_2 = InlineKeyboardButton(text='сменить сложность', callback_data='action')
-        button_3 = InlineKeyboardButton(text='задать вопрос', callback_data='action')
+        button_1 = InlineKeyboardButton(text='сменить тему', callback_data='sub_action')
+        button_2 = InlineKeyboardButton(text='сменить сложность', callback_data='diff_action')
+        button_3 = InlineKeyboardButton(text='задать вопрос', callback_data='ask_action')
         actions_markup.add(button_1, button_2, button_3, row_width=2)
 
         bot.send_message(chat_id, 'что вы хотите сделать?', reply_markup=actions_markup)
@@ -171,7 +177,16 @@ def actions_1(chat_id):
 
 @bot.callback_query_handler(func=lambda call: call.data.endswith('action'))
 def actions_2(call):
-    ...
+    chat_id = call.message.chat.id
+    action = call.data.split('_')[0]
+    bot.delete_message(chat_id, call.message.message_id)
+
+    if action == 'ask':
+        first_user_request(chat_id)
+    elif action == 'sub':
+        settings_choice_1(chat_id)
+    else:
+        settings_choice_2(chat_id)
 
 
 def first_user_request(chat_id):
@@ -212,7 +227,7 @@ def register_user_request(message: Message):
         users[user_id]['requests'].append(message.text)
         user_save(users)
 
-        bot.send_message(message.chat.id, gpt_dialog(user_request))
+        bot.send_message(message.chat.id, gpt_dialog(user_request, user_id))
         first_user_request(message.chat.id)
 
     elif message.text == '/stop':
