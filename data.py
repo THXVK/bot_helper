@@ -39,15 +39,17 @@ channels = {
 }
 
 cur.execute('''CREATE TABLE IF NOT EXISTS channels (
-                            channel_name TEXT PRIMARY KEY,
-                            url TEXT
+                            url TEXT PRIMARY KEY,
+                            channel_name TEXT
                        );''')
 
 for channel in channels.items():
-    q = f'SELECT * FROM channels WHERE channel_name = {channel[0]}'
-    if not cur.execute(q):
-        cur.execute('''INSERT INTO channels (channel_name, url)
-                        VALUES (?, ?)''', (channel[0], channel[1]))
+    try:
+        q = f'SELECT * FROM channels WHERE url = {channel[1]}'
+        r = cur.execute(q)
+    except sqlite3.OperationalError:
+        cur.execute('''INSERT INTO channels (url, channel_name)
+                        VALUES (?, ?)''', (channel[1], channel[0]))
 
 connection.commit()
 
@@ -66,3 +68,6 @@ def normal(table_data):
     for data in table_data:
         result.append(data)
     return result
+
+
+connection.close()
