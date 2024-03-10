@@ -3,7 +3,7 @@ import random
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from os import getenv
-from data import user_load, user_save, settings_dict, get_table_data, normal
+from data import user_load, user_save, settings_dict, get_table_data, is_user_in_table, add_new_user
 from gpt import gpt_dialog
 
 load_dotenv()
@@ -52,8 +52,7 @@ def gen_settings_markup(settings):
 
 
 def gen_channels_markup(user_id):
-    channels_data = get_table_data('channels')
-    channels = normal(channels_data)
+    channels = get_table_data('channels')
     markup = InlineKeyboardMarkup()
 
     def gen_button(text, url):
@@ -62,18 +61,14 @@ def gen_channels_markup(user_id):
 
     chosen_channels = random.sample(channels, k=3)
 
-    users = user_load()
-
     for channel in chosen_channels:
-        users = user_load()
-        users[user_id]['channels'][channel['channel_name']] = {'name': channel['channel_name'],
-                                                               'is_member': False, 'url': channel['url']}
-        user_save(users)
-        name = channel['channel_name']
-        url = channel['url']
-        gen_button(name, url)
+        name = channel[1]
+        url = channel[0]
+        add_new_user((user_id, name, url, 0),
+                     'users_subscribe_data',
+                     ['user_id', 'channel_name', 'url', 'is_member'])
 
-    user_save(users)
+        gen_button(name, url)
 
     check_button = InlineKeyboardButton('проверить', callback_data='check')
     markup.add(check_button)
@@ -82,17 +77,9 @@ def gen_channels_markup(user_id):
 
 @bot.message_handler(commands=['start'])
 def start(message: Message):
-    user_id = str(message.chat.id)
-    users = user_load()
-    if user_id not in users:
-        users[user_id] = {
-            "channels": {},
-            "requests": [],
-            "settings": {"difficulty": "",
-                         "subject": ""
-                         }
-        }
-        user_save(users)
+    user_id = message.chat.id
+
+    if not is_user_in_table(user_id, 'users_questions_data'):
 
         bot.send_message(message.chat.id,
                          'Это телеграмм бот - помощник')
@@ -103,7 +90,7 @@ def start(message: Message):
         bot.send_message(message.chat.id, 'вы уже прошли проверку')
         first_user_request(message.chat.id)
     else:
-        bot.send_message(message.chat.id, 'вы все еще не подписаны')
+        bot.send_message(message.chat.id, 'вы все еще не подписаны на каналы')
 
 
 def access_denied(message):
