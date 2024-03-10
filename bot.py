@@ -3,7 +3,7 @@ import random
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from os import getenv
-from data import user_load, user_save, settings_dict, get_table_data, is_user_in_table, add_new_user
+from data import settings_dict, get_table_data, is_user_in_table, add_new_user, get_user_data, update_row
 from gpt import gpt_dialog
 
 load_dotenv()
@@ -94,34 +94,38 @@ def start(message: Message):
 
 
 def access_denied(message):
-    users = user_load()
-    user_id = str(message.chat.id)
-    for channel in users[user_id]['channels']:
-        if not users[user_id]['channels'][channel]['is_member']:
-            msg = bot.send_message(message.chat.id, 'прежде чем что-то сделать, вы должны пройти проверку')
-            bot.register_next_step_handler(msg, access_denied)
-            break
+    user_id = message.chat.id
+    user = get_user_data(user_id, 'users_subscribe_data')
+    for i in user:
+        for channel in i[2]:
+            if not i[4]:
+                msg = bot.send_message(message.chat.id, 'прежде чем что-то сделать, вы должны пройти проверку')
+                bot.register_next_step_handler(msg, access_denied)
+                break
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'check')
 def check(call):
-    user_id = str(call.message.chat.id)
-    users = user_load()
+    user_id = call.message.chat.id
+    user = get_user_data(user_id, 'users_subscribe_data')
     status = ['creator', 'administrator', 'member']
-    for u_channel in users[user_id]['channels']:
 
-        if bot.get_chat_member(chat_id='@' + users[user_id]['channels'][u_channel]['url'],
-                               user_id=call.message.chat.id).status in status:
-            users[user_id]['channels'][u_channel]['is_member'] = True
+    for i in user:
+        for u_channel in i[2]:
 
-        else:
-            user_save(users)
-            bot.send_message(call.message.chat.id, f'вы еще не подписались на {u_channel}')
-            break
+            if bot.get_chat_member(chat_id='@' + i[3],
+                                   user_id=call.message.chat.id).status in status:
+                update_row(user_id, 'is_member', 1, 'users_subscribe_data')
+            else:
+                bot.send_message(call.message.chat.id, f'вы еще не подписались на {u_channel}')
+                break
     else:
-        user_save(users)
-        bot.send_message(call.message.chat.id, 'вы прошли проверку')
+        add_new_user((user_id, '', '', '', ''),
+                     'users_questions_data',
+                     ['user_id', 'subject', 'difficulty', 'question', 'answer'])
+
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+        bot.send_message(call.message.chat.id, 'вы прошли проверку')
         settings_choice_1(call.message.chat.id)
 
 
@@ -137,23 +141,34 @@ def settings_choice_2(chat_id):
 def settings_change(call):
     bot.delete_message(call.message.chat.id, call.message.message_id)
     chat_id = call.message.chat.id
-    user_id = str(chat_id)
-    users = user_load()
+    user_id = chat_id
+    user = get_user_data(user_id, 'users_questions_data')[0]
     param = call.data.split('_')[0]
     set = call.data.split('_')[1]
+    set_index = 0
 
-    users[user_id]['settings'][set] = param
-    user_save(users)
+    if set == 'subject':
+        set_index = 2
+    else:
+        set_index = 3
+
+    if user[set_index]:
+        add_new_user((user_id, '', '', '', ''),
+                     'users_questions_data',
+                     ['user_id', 'subject', 'difficulty', 'question', 'answer'])
+    else:
+        update_row(user_id, set, param, 'users_questions_data')
+
     bot.send_message(chat_id, 'настройки изменены')
     actions_1(chat_id)
 
 
 def actions_1(chat_id):
-    user_id = str(chat_id)
-    users = user_load()
-    if not users[user_id]['settings']['difficulty']:
+    user_id = chat_id
+    user = get_user_data(user_id, 'users_questions_data')[0]
+    if not user[3]:
         settings_choice_2(chat_id)
-    elif not users[user_id]['settings']['subject']:
+    elif not user[2]:
         settings_choice_1(chat_id)
     else:
         actions_markup = InlineKeyboardMarkup()
@@ -185,10 +200,11 @@ def first_user_request(chat_id):
 
 
 def status_check(message):
-    users = user_load()
-    user_id = str(message.chat.id)
-    for channel in users[user_id]['channels']:
-        if not users[user_id]['channels'][channel]['is_member']:
+    user_id = message.chat.id
+    user = get_user_data(user_id, 'users_questions_data')[0]
+
+    for channel in user[2]:
+        if not user[4]:
             bot.send_message(message.chat.id, 'вы подписаны не на все каналы')
             return False
     return True
@@ -207,15 +223,11 @@ def echo(message: Message) -> None:
 @bot.message_handler(content_types=['text'], func=status_check)
 def register_user_request(message: Message):
     if not message.text.startswith('/'):
-
-        users = user_load()
-        user_id = str(message.chat.id)
+        user_id = message.chat.id
+        user = get_user_data(user_id, 'users_questions_data')[0]
         user_request = message.text
 
-        ...
-
-        users[user_id]['requests'].append(message.text)
-        user_save(users)
+        update_row(user_id, 'question', user_request, 'users_questions_data')
 
         bot.send_message(message.chat.id, gpt_dialog(user_request, user_id))
         first_user_request(message.chat.id)

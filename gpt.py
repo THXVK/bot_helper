@@ -1,7 +1,7 @@
 import requests
 from log import logger
 from transformers import AutoTokenizer
-from data import user_load
+from data import get_user_data
 
 URL = 'http://localhost:1234/v1/chat/completions'
 HEADERS = {"Content-Type": "application/json"}
@@ -93,9 +93,9 @@ class GPT:
 
 
 def make_system_promt(user_id) -> str:
-    users = user_load()
-    diff = users[user_id]['settings']['difficulty']
-    sub = users[user_id]['settings']['subject']
+    user = get_user_data(user_id, 'users_questions_data')[0]
+    diff = user[3]
+    sub = user[2]
     promt = f'ты помощник по предмету {sub}, ты должен ответить на вопрос собеседника, учитывая что его уровень знаний - {diff}. Отвечай на русском'
     return promt
 

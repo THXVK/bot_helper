@@ -66,15 +66,11 @@ def execute_query(query: str, data: tuple | None = None, db_name: str = DB_NAME)
 
 
 def add_new_user(users_data: tuple, table: str, columns: list):
-    if not is_user_in_table(users_data[0], table):
-        sql_query = (
-            f'INSERT INTO {table} '
-            f'({', '.join(columns)}) '
-            f'VALUES ({'?, ' * (len(columns) - 1) + '?'});')
-        execute_query(sql_query, users_data)
-        return True
-    else:
-        return False
+    sql_query = (
+        f'INSERT INTO {table} '
+        f'({', '.join(columns)}) '
+        f'VALUES ({'?, ' * (len(columns) - 1) + '?'});')
+    execute_query(sql_query, users_data)
 
 
 def is_user_in_table(user_id: int, table: str) -> bool:
@@ -86,12 +82,14 @@ def is_user_in_table(user_id: int, table: str) -> bool:
     return bool(execute_query(sql_query, (user_id,)))
 
 
-def update_row(user_id: int, column_name: str, new_value: str, table: str):
+def update_row(user_id: int, column_name: str, new_value: any, table: str):
     if is_user_in_table(user_id, table):
         sql_query = (
-            f'update {table} '
+            f'UPDATE {table} '
             f'SET {column_name} = ? '
-            f'WHERE user_id = ?;'
+            f'WHERE user_id = ? '
+            f'ORDER BY id DESC, '
+            f'LIMIT 1;'
         )
 
         execute_query(sql_query, (new_value, user_id))
@@ -105,9 +103,10 @@ def get_user_data(user_id: int, table: str):
         sql_query = (
             f'SELECT * '
             f'FROM {table} '
-            f'WHERE user_id = {user_id}'
+            f'WHERE user_id = {user_id} '
+            f'ORDER BY id DESC;'
         )
-        row = execute_query(sql_query)[0]
+        row = execute_query(sql_query)
 
         return row
 
@@ -167,5 +166,6 @@ def drop(table):
     execute_query(f'DROP TABLE {table};')
 
 
+create_users_questions_data()
 create_users_sb_table()
 create_channels_table()
