@@ -2,9 +2,7 @@ import requests
 from log import logger
 from transformers import AutoTokenizer
 from data import get_user_data
-
-URL = 'http://localhost:1234/v1/chat/completions'
-HEADERS = {"Content-Type": "application/json"}
+from config import HEADERS, URL
 
 
 class GPT:

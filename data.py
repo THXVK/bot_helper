@@ -1,7 +1,6 @@
 import json
 import sqlite3
-
-DB_NAME = 'sqlite3.db'
+from config import DB_NAME
 
 settings_dict = {
     'subject': [
@@ -14,21 +13,6 @@ settings_dict = {
         'профи'
     ]
 }
-filename_1 = '../bot_helper/users_data.json'
-
-
-def user_load() -> dict:
-    try:
-        with open(filename_1, 'r', encoding='utf-8') as file:
-            return json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
-def user_save(data: dict):
-    with open(filename_1, 'w', encoding='utf-8') as file:
-        json.dump(data, file, indent=2, ensure_ascii=False)
-
 
 channels = {
     'канал 1': 'derteafg',
@@ -36,13 +20,6 @@ channels = {
     'канал 3': 'sdfsadfsdeq',
     'канал 4': 'sertsdfgWS',
 }
-
-
-#    "channels": {},
-#    "requests": [],
-#   "settings": {"difficulty": "",
-#               "subject": ""
-#              }
 
 
 def execute_query(query: str, data: tuple | None = None, db_name: str = DB_NAME):
@@ -82,17 +59,31 @@ def is_user_in_table(user_id: int, table: str) -> bool:
     return bool(execute_query(sql_query, (user_id,)))
 
 
-def update_row(user_id: int, column_name: str, new_value: any, table: str):
+def update_row_questions(user_id: int, column_name: str, new_value: any, table: str):
+    if is_user_in_table(user_id, table):
+        sql_query = (
+            f'UPDATE update_row_questions '
+            f'SET {column_name} = ? '
+            f'WHERE id = (SELECT MAX(id) FROM update_row_questions WHERE user_id = ?);'
+
+        )
+
+        execute_query(sql_query, (new_value, user_id))
+        return True
+    else:
+        return False
+
+
+def update_row_subscribe(user_id: int, column_name: str, url: str, new_value: any, table: str):
     if is_user_in_table(user_id, table):
         sql_query = (
             f'UPDATE {table} '
             f'SET {column_name} = ? '
             f'WHERE user_id = ? '
-            f'ORDER BY id DESC, '
-            f'LIMIT 1;'
+            f'AND url = ?;'
         )
 
-        execute_query(sql_query, (new_value, user_id))
+        execute_query(sql_query, (new_value, user_id, url))
         return True
     else:
         return False
@@ -104,7 +95,7 @@ def get_user_data(user_id: int, table: str):
             f'SELECT * '
             f'FROM {table} '
             f'WHERE user_id = {user_id} '
-            f'ORDER BY id DESC;'
+            f'ORDER BY id ASC;'
         )
         row = execute_query(sql_query)
 
