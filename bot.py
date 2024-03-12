@@ -137,12 +137,7 @@ def settings_change(call):
     bot.delete_message(call.message.chat.id, call.message.message_id)
     chat_id = call.message.chat.id
     user_id = chat_id
-    all_user_data = get_user_data(user_id, 'users_questions_data')
-    last_w = len(all_user_data) - 1
-    lastest_user_data = all_user_data[last_w]
-
-    print(all_user_data)
-    print(lastest_user_data)
+    user_data = get_user_data(user_id, 'users_questions_data')[0]
 
     param = call.data.split('_')[0]
     set = call.data.split('_')[1]
@@ -152,13 +147,11 @@ def settings_change(call):
     else:
         set_index = 3
 
-    if lastest_user_data[set_index]:
+    if user_data[set_index]:
         add_new_user((user_id, '', '', '', ''),
                      'users_questions_data',
                      ['user_id', 'subject', 'difficulty', 'question', 'answer'])
     else:
-        print(set)
-        print(param)
         update_row_questions(user_id, set, param, 'users_questions_data')
 
     bot.send_message(chat_id, 'настройки изменены')
@@ -168,10 +161,27 @@ def settings_change(call):
 def actions_1(chat_id):
     user_id = chat_id
     user = get_user_data(user_id, 'users_questions_data')[0]
-    if not user[2]:
+
+    # если новый пользователь без предмета
+    if not user[2] and len(get_user_data(user_id, 'users_questions_data')) == 1:
         settings_choice_1(chat_id)
-    elif not user[3]:
+
+    # если новый пользователь без сложности
+    elif not user[3] and len(get_user_data(user_id, 'users_questions_data')) == 1:
         settings_choice_2(chat_id)
+
+    # если старый пользователь без предмета
+    elif not user[2]:
+        sub = get_user_data(user_id, 'users_questions_data')[1][2]  # настройка из предыдущего запроса
+        update_row_questions(user_id, 'subject', sub, 'users_questions_data')
+        actions_1(chat_id)
+
+    # если старый пользователь без сложности
+    elif not user[3]:
+        diff = get_user_data(user_id, 'users_questions_data')[1][3]
+        update_row_questions(user_id, 'difficulty', diff, 'users_questions_data')
+        actions_1(chat_id)
+
     else:
         actions_markup = InlineKeyboardMarkup()
         button_1 = InlineKeyboardButton(text='сменить тему', callback_data='sub_action')
@@ -200,9 +210,12 @@ def first_user_request(chat_id):
     user = get_user_data(chat_id, 'users_questions_data')[0]
     sub = user[2]
     diff = user[3]
-    add_new_user((chat_id, sub, diff, '', ''),
-                 'users_questions_data',
-                 ['user_id', 'subject', 'difficulty', 'question', 'answer'])
+
+    if user[4]:
+        add_new_user((chat_id, sub, diff, '', ''),
+                     'users_questions_data',
+                     ['user_id', 'subject', 'difficulty', 'question', 'answer'])
+
     msg = bot.send_message(chat_id, 'напишите свой запрос:')
     bot.register_next_step_handler(msg, register_user_request)
 
@@ -232,7 +245,6 @@ def echo(message: Message) -> None:
 def register_user_request(message: Message):
     if not message.text.startswith('/'):
         user_id = message.chat.id
-        user = get_user_data(user_id, 'users_questions_data')[0]
         user_request = message.text
 
         update_row_questions(user_id, 'question', user_request, 'users_questions_data')

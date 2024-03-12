@@ -65,7 +65,6 @@ def update_row_questions(user_id: int, column_name: str, new_value: any, table: 
             f'UPDATE update_row_questions '
             f'SET {column_name} = ? '
             f'WHERE id = (SELECT MAX(id) FROM update_row_questions WHERE user_id = ?);'
-
         )
 
         execute_query(sql_query, (new_value, user_id))
@@ -95,7 +94,7 @@ def get_user_data(user_id: int, table: str):
             f'SELECT * '
             f'FROM {table} '
             f'WHERE user_id = {user_id} '
-            f'ORDER BY id ASC;'
+            f'ORDER BY id DESC;'
         )
         row = execute_query(sql_query)
 
