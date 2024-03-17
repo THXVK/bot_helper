@@ -62,9 +62,9 @@ def is_user_in_table(user_id: int, table: str) -> bool:
 def update_row_questions(user_id: int, column_name: str, new_value: any, table: str):
     if is_user_in_table(user_id, table):
         sql_query = (
-            f'UPDATE update_row_questions '
+            f'UPDATE users_questions_data '
             f'SET {column_name} = ? '
-            f'WHERE id = (SELECT MAX(id) FROM update_row_questions WHERE user_id = ?);'
+            f'WHERE id = (SELECT MAX(id) FROM users_questions_data WHERE user_id = ?);'
         )
 
         execute_query(sql_query, (new_value, user_id))
